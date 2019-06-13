@@ -16,7 +16,7 @@ const cities = [
   'denver',
   'baltimore',
   'raleigh',
- 'chicago',
+  'chicago',
   'cleveland',
 ];
 const searches = [
@@ -111,19 +111,21 @@ const findRentals = async city => {
 
 const findAllRentals = async cities => {
   const rentals = await Promise.all(cities.map(findRentals));
-  console.log({ allFound: rentals.reduce((sum, rental) => sum + rental.length, 0)});
+  console.log({
+    allFound: rentals.reduce((sum, rental) => sum + rental.length, 0),
+  });
   const answer = rentals.reduce((accum, rental) => {
     accum.push(...rental);
     return accum;
   }, []);
-  console.log({ allFound: answer.length})
+  console.log({ allFound: answer.length });
   return answer;
 };
 
 findAllRentals(cities).then(data => {
   const trim = text =>
     text
-      .split(/\s+\n+/)
+      .split(/\s+\n+|\n+/gi)
       .filter(s => s.length)
       .map(s => s.trim());
   const results = data.map(({ PostingURL, address, title, body }, index) => ({
@@ -149,7 +151,9 @@ findAllRentals(cities).then(data => {
       return `\x1b[31m${match}\x1b[0m`;
     });
   }, text);
-  const text3 = text2.replace(/\$([\d,.]+)/gi, match =>
-    `\x1b[35m\$${currency(match,{ precision: 0 }).format()}\x1b[0m`);
+  const text3 = text2.replace(
+    /\$([\d,.]+)/gi,
+    match => `\x1b[35m\$${currency(match, { precision: 0 }).format()}\x1b[0m`,
+  );
   console.log(text3);
 });
