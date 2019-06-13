@@ -6,20 +6,20 @@ const currency = require('currency.js');
 
 const cities = [
   'sfbay',
-    'boston',
-    'richmond',
-    'charlotte',
-    'austin',
-    'miami',
-    'savannah',
-    'montreal',
-    'losangeles',
-    'charleston',
-    'denver',
-    'baltimore',
-    'raleigh',
-    'chicago',
-    'cleveland',
+  'boston',
+  'richmond',
+  'charlotte',
+  'austin',
+  'miami',
+  'savannah',
+  'montreal',
+  'losangeles',
+  'charleston',
+  'denver',
+  'baltimore',
+  'raleigh',
+  'chicago',
+  'cleveland',
 ];
 const searches = [
   /\b(inns?|hotels?|motels?)\b/gi,
@@ -107,7 +107,7 @@ const multifamilyFilter = details => {
   return false;
 };
 
-const findRentals = async (city) => {
+const findRentals = async city => {
   const list = await fetchCraigslist(city);
   const details = await Promise.all(
     list.filter(obj => !!obj).map(fetchCraigslistDetails),
@@ -122,27 +122,32 @@ const findAllRentals = async cities => {
     accum.push(...rentals);
     return accum;
   }, []);
-  const statistic = results.reduce((accum, {found, city}) => {
+  const statistic = results.reduce(
+    (accum, { found, city }) => {
       accum[city] = found;
       accum.found += found;
       return accum;
-  }, { found: 0});
+    },
+    { found: 0 },
+  );
   return { rentals, statistic };
 };
 
-findAllRentals(cities).then(({rentals, statistic}) => {
+findAllRentals(cities).then(({ rentals, statistic }) => {
   const trim = text =>
     text
       .split(/\s+\n+|\n+/gi)
       .filter(s => s.length)
       .map(s => s.trim());
-  const results = rentals.map(({ PostingURL, address, title, body }, index) => ({
-    index,
-    address,
-    url: PostingURL,
-    body: trim(body),
-    title: trim(title)[1],
-  }));
+  const results = rentals.map(
+    ({ PostingURL, address, title, body }, index) => ({
+      index,
+      address,
+      url: PostingURL,
+      body: trim(body),
+      title: trim(title)[1],
+    }),
+  );
 
   const options = {
     separator: 'white',
@@ -165,7 +170,7 @@ findAllRentals(cities).then(({rentals, statistic}) => {
     });
   }, text1);
   console.log(text2);
-  console.log({statistic});
+  console.log({ statistic });
   //   const text3 = text2.replace(
   //     /\$?[\d,.]+[kmKM]?/gi,
   //     match => `\x1b[32m${currency(match, { precision: 0, symbol: "$" }).format()}\x1b[0m`,
