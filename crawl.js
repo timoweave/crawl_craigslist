@@ -1,31 +1,33 @@
 const cheerio = require('cheerio');
+// const axios = require('axios-observable');
 const axios = require('axios');
 const cj = require('color-json');
 const currency = require('currency.js');
 
 const cities = [
   'sfbay',
-  'boston',
-  'richmond',
-  'austin',
-  'miami',
-  'savannah',
-  'montreal',
-  'losangeles',
-  'charleston',
-  'denver',
-  'baltimore',
-  'raleigh',
-  'chicago',
-  'cleveland',
+    'boston',
+    'richmond',
+    'charlotte',
+    'austin',
+    'miami',
+    'savannah',
+    'montreal',
+    'losangeles',
+    'charleston',
+    'denver',
+    'baltimore',
+    'raleigh',
+    'chicago',
+    'cleveland',
 ];
 const searches = [
   /\b(inns?|hotels?|motels?)\b/gi,
-  /((\d+|four|five|six|seven|eight|nine|ten|eleven|twelve|multi)[-\t ]?(units?|family|((du|tri|quad)?plexe?s?)|families))/gi,
+  /((\d+|four|five|six|seven|eight|nine|ten|eleven|twelve|multi)[-\t ]*(units?|family|((du|tri|quad)?plexe?s?)|families))/gi,
 ];
 const properties = [
-  /((\d+|four|five|six|seven|eight|nine|ten|eleven|twelve)[-\t ]((bed|bath)?rooms?))/gi,
-  /\$[\d,.]+/gi,
+  /\b((\d+|four|five|six|seven|eight|nine|ten|eleven|twelve)[-\t ]*((bed|bath)?rooms?)|story|stories|flats?)\b/gi,
+  /\$[\d,.]+[KM]*/gi,
 ];
 const finances = [
   'cap rate',
@@ -41,10 +43,17 @@ const finances = [
   'cash flow',
   'cash on cash',
 ];
-const neighborhood = ['university', 'college', 'campus', 'downtown'];
+const neighborhood = [
+  'university',
+  'college',
+  'campus',
+  'downtown',
+  'midtown',
+  'stadium',
+  'school',
+];
 
 const hilites = [
-  ...searches,
   ...properties,
   new RegExp(cities.join('|'), 'gi'),
   new RegExp(finances.join('|'), 'gi'),
@@ -98,37 +107,36 @@ const multifamilyFilter = details => {
   return false;
 };
 
-const findRentals = async city => {
-  console.log({ city });
+const findRentals = async (city) => {
   const list = await fetchCraigslist(city);
   const details = await Promise.all(
     list.filter(obj => !!obj).map(fetchCraigslistDetails),
   );
   const rentals = details.filter(obj => !!obj).filter(multifamilyFilter);
-  console.log({ city, found: rentals.length });
-  return rentals;
+  return { rentals, found: rentals.length, city };
 };
 
 const findAllRentals = async cities => {
-  const rentals = await Promise.all(cities.map(findRentals));
-  console.log({
-    allFound: rentals.reduce((sum, rental) => sum + rental.length, 0),
-  });
-  const answer = rentals.reduce((accum, rental) => {
-    accum.push(...rental);
+  const results = await Promise.all(cities.map(findRentals));
+  const rentals = results.reduce((accum, { rentals }) => {
+    accum.push(...rentals);
     return accum;
   }, []);
-  console.log({ allFound: answer.length });
-  return answer;
+  const statistic = results.reduce((accum, {found, city}) => {
+      accum[city] = found;
+      accum.found += found;
+      return accum;
+  }, { found: 0});
+  return { rentals, statistic };
 };
 
-findAllRentals(cities).then(data => {
+findAllRentals(cities).then(({rentals, statistic}) => {
   const trim = text =>
     text
       .split(/\s+\n+|\n+/gi)
       .filter(s => s.length)
       .map(s => s.trim());
-  const results = data.map(({ PostingURL, address, title, body }, index) => ({
+  const results = rentals.map(({ PostingURL, address, title, body }, index) => ({
     index,
     address,
     url: PostingURL,
@@ -146,14 +154,21 @@ findAllRentals(cities).then(data => {
   };
 
   const text = cj(results, options);
-  const text2 = hilites.reduce((accum_text, pattern) => {
+  const text1 = searches.reduce((accum_text, pattern) => {
     return accum_text.replace(pattern, match => {
       return `\x1b[31m${match}\x1b[0m`;
     });
   }, text);
-  const text3 = text2.replace(
-    /\$([\d,.]+)/gi,
-    match => `\x1b[35m\$${currency(match, { precision: 0 }).format()}\x1b[0m`,
-  );
-  console.log(text3);
+  const text2 = hilites.reduce((accum_text, pattern) => {
+    return accum_text.replace(pattern, match => {
+      return `\x1b[33m${match}\x1b[0m`;
+    });
+  }, text1);
+  console.log(text2);
+  console.log({statistic});
+  //   const text3 = text2.replace(
+  //     /\$?[\d,.]+[kmKM]?/gi,
+  //     match => `\x1b[32m${currency(match, { precision: 0, symbol: "$" }).format()}\x1b[0m`,
+  //   );
+  //   console.log(text3);
 });
